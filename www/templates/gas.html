@@ -1,0 +1,12 @@
+<ion-view view-title="加油站列表" id="gas-scope">
+  <div id="map-canvas" style="height: 100%"></div>
+  <div id="center-marker" class="hide-on-keyboard-open">
+    <div class="marker">
+      <div class="dot"></div>
+      <div class="pulse"></div>
+    </div>
+  </div>
+  <button id="gps-location" ng-class="{ 'active': isCenter }" ng-click="getCenter()">
+    <i class="icon-my_location"></i>
+  </button>
+</ion-view>
