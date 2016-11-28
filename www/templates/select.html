@@ -1,0 +1,55 @@
+<ion-modal-view>
+  <ion-header-bar>
+    
+    <div class="buttons">
+      <button class="button button-clear" ng-click="closeSelect()">取消</button>
+    </div>
+    <h1 class="title">選擇資料</h1>
+  </ion-header-bar>
+  <ion-content has-bouncing="true">
+    <div class="list">
+      <div class="item item-divider">選擇設備</div>
+      <a class="item item-icon-left" href="#" ng-click="getIMEI($event)">
+        <i class="icon ion-model-s"></i>
+        車輛
+        <span class="item-note">
+          <span ng-hide="selectInfo.imei">尚未選擇</span>
+          <span ng-show="selectInfo.imei">{{ selectInfo.imei }}</span>
+        </span>
+      </a>
+      <div class="start-end-wrapper" ng-show="selectInfo.imei">
+        <div class="item item-divider">起迄時間</div>
+        <div class="item item-icon-left" ion-datetime-picker ng-model="selectInfo.startDateTime">
+          <i class="icon ion-ios-time positive"></i>
+          開始時間: 
+          <span class="item-note">
+            <span ng-hide="selectInfo.startDateTime">尚未選擇</span>
+            <span ng-show="selectInfo.startDateTime">{{selectInfo.startDateTime| date: "yyyy-MM-dd H:mm"}}</span>
+          </span>
+        </div>
+
+        <div class="item item-icon-left" ion-datetime-picker ng-model="selectInfo.endDateTime">
+          <i class="icon ion-ios-time"></i>
+          結束時間: 
+          <span class="item-note">
+            <span ng-hide="selectInfo.endDateTime">尚未選擇</span>
+            <span ng-show="selectInfo.endDateTime">{{selectInfo.endDateTime| date: "yyyy-MM-dd H:mm"}}</span>
+          </span>
+        </div>
+
+
+      </div>
+
+
+
+
+
+    </div>
+  </ion-content>
+  <ion-footer-bar class="bar bar-footer bar-stable height">
+    <button class="button button-block button-positive" ng-click="getHistory(selectInfo)" ng-disabled="!selectInfo.imei">
+      取得軌跡
+    </button>
+  </ion-footer-bar>
+
+</ion-modal-view>

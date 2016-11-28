@@ -4,11 +4,6 @@ function validateEmail(email) {
 }
 
 
-
-
-
-
-
 angular.module('starter.controllers', [])
 
 .directive('underBtn', [function(){
@@ -29,9 +24,211 @@ angular.module('starter.controllers', [])
 }])
 
 
-.controller('MapCtrl', ['$scope', '$state', '$stateParams', '$ionicBackdrop', '$ionicPopup', '$ionicModal', '$ionicHistory', '$location', '$timeout', 'Info', function($scope, $state, $stateParams, $ionicBackdrop, $ionicPopup, $ionicModal, $ionicHistory, $location, $timeout, Info){
-  console.log(Info.carType, Info.driveType);
+.controller('MapCtrl', ['$scope', '$state', '$stateParams', '$http', '$ionicBackdrop', '$ionicPopup', '$ionicModal', '$ionicHistory', '$location', '$timeout', 'Info', function($scope, $state, $stateParams, $http, $ionicBackdrop, $ionicPopup, $ionicModal, $ionicHistory, $location, $timeout, Info){
   var getAddress;
+
+  $scope.selectInfo = {};
+
+  $scope.isCenter = false;
+
+  $scope.timeago = function(time) {
+    time = parseInt(time, 10) *1000;
+    var offsetTime = new Date().getTime() - time;
+    return moment(offsetTime).startOf('hour').fromNow();
+  }
+
+  $scope.getCarList = function() {
+    $http({
+      method: 'GET',
+      url: 'https://carbus.com.tw/car/getcar'
+    }).then(function(res) {
+      $scope.carLists = res.data.data;
+      console.log($scope.carLists);
+      angular.forEach($scope.carLists, function(car) {
+        car.defaultBeginTime =  new Date( ( parseInt(car.server_time) - parseInt(car.seconds) )*1000 - 1800*1000 );
+        car.defaultEndTime =  new Date( ( parseInt(car.server_time) - parseInt(car.seconds) )*1000 );
+      })
+    })
+  }
+
+  $scope.getCarList();
+
+  $ionicModal.fromTemplateUrl('templates/select.html', {
+    scope: $scope
+  }).then(function(modal) {
+    $scope.selectModal = modal;
+  });
+  $scope.selectCar = function() {
+    $scope.selectModal.show();
+  }
+  $scope.closeSelect = function() {
+    $scope.selectModal.hide();
+  }
+
+  $ionicModal.fromTemplateUrl('templates/imei.html', {
+    scope: $scope
+  }).then(function(modal) {
+    $scope.imeiModal = modal;
+  });
+
+  $scope.getIMEI = function(e) {
+    e.preventDefault();
+    $scope.imeiModal.show();
+  }
+  $scope.closeIMEI = function() {
+    $scope.selectInfo.imei = undefined;
+    $scope.imeiModal.hide();
+  }
+  $scope.setIMEI = function(imei) {
+    $scope.setTime(imei);
+    $scope.imeiModal.hide();
+  }
+  $scope.setTime = function(imei) {
+    angular.forEach($scope.carLists, function(car) {
+      if (car.imei == imei) {
+        $scope.selectInfo.startDateTime = car.defaultBeginTime;
+        $scope.selectInfo.endDateTime = car.defaultEndTime;
+      }
+    });
+  }
+
+  $scope.getHistory = function(data) {
+    $scope.isSnapped = false;
+    $ionicBackdrop.retain();
+    var begin = Math.floor( (new Date(data.startDateTime).getTime())/1000 );
+    var end = Math.floor( (new Date(data.endDateTime).getTime())/1000 );
+    var imei = data.imei;
+    $http({
+      method: 'GET',
+      url: 'https://carbus.com.tw/car/history?time='+begin+'&begin='+begin+'&end='+end+'&imei='+imei
+    }).then(function(res) {
+      if (res.data.data.length < 1000) {
+        $scope.routeHistory = res.data.data;
+        console.log($scope.routeHistory);
+        $ionicBackdrop.release();
+        $scope.drawRoute($scope.routeHistory);
+      } else {
+        $scope.routeHistory = res.data.data;
+        $scope.fetchMore(res.data.data[999].gps_time, begin, end, imei);
+      }
+    })
+  }
+
+  $scope.fetchMore = function(time, begin, end, imei) {
+    $http({
+      method: 'GET',
+      url: 'https://carbus.com.tw/car/history?time='+time+'&begin='+time+'&end='+end+'&imei='+imei
+    }).then(function(res) {
+      if (res.data.data.length < 1000) {
+        angular.forEach(res.data.data, function(value) {
+          $scope.routeHistory.push(value);
+        });
+        console.log($scope.routeHistory);
+        $ionicBackdrop.release();
+        $scope.drawRoute($scope.routeHistory);
+      } else {
+        angular.forEach(res.data.data, function(value) {
+          $scope.routeHistory.push(value);
+        });
+        $scope.fetchMore(res.data.data[999].gps_time, begin, end, imei);
+      }
+    })
+  }
+
+  var drivePath;
+  var snappedPath;
+
+  $scope.drawRoute = function(points) {
+    $scope.getSnapPath(points);
+    $scope.closeSelect();
+    if (drivePath) {
+      drivePath.setMap(null);
+    }
+    var path = [];
+    angular.forEach(points, function(point) {
+      path.push({
+        lat: point.lat,
+        lng: point.lng
+      });
+    });
+    drivePath = new google.maps.Polyline({
+      path: path,
+      geodesic: true,
+      strokeColor: '#918ec8',
+      strokeOpacity: 1.0,
+      strokeWeight: 4
+    });
+    map.panTo(path[0]);
+    drivePath.setMap(map);
+  }
+
+  $scope.isSnapped = false;
+  $scope.getSnapPath = function(points) {
+    var path = "";
+    if (points.path < 100) {
+      angular.forEach(points, function(point) {
+        if (point === points[points.length - 1]) {
+          path = path + point.lat.toString() +','+ point.lng.toString();
+        } else {
+          path = path + point.lat.toString() +','+ point.lng.toString() + '|';
+        }
+      });
+    } else {
+      var offset = Math.floor(points.length/100);
+      console.log('offset', offset);
+      for (var i = 0; i < 100; i++) {
+        if (i == 99) {
+          path = path + points[offset*i].lat.toString() +','+ points[offset*i].lng.toString();
+        } else {
+          path = path + points[offset*i].lat.toString() +','+ points[offset*i].lng.toString() + '|';
+        }
+      }
+    }
+    $http({
+      method: 'GET',
+      url: 'https://roads.googleapis.com/v1/snapToRoads?path='+ path +'&interpolate=true&key=AIzaSyBK1UdPeQoFK1cqoS_smoW3FoRbHOldERE'
+    }).then(function(res) {
+      console.log(res.data.snappedPoints);
+      $scope.drawSnapped(res.data.snappedPoints);
+    })
+  }
+
+  $scope.drawSnapped = function(points) {
+    var path = [];
+    angular.forEach(points, function(point) {
+      path.push({
+        lat: point.location.latitude,
+        lng: point.location.longitude
+      });
+    });
+    if (snappedPath) {
+      snappedPath.setMap(null);
+    }
+    snappedPath = new google.maps.Polyline({
+      path: path,
+      geodesic: true,
+      strokeColor: '#000000',
+      strokeOpacity: 1.0,
+      strokeWeight: 2
+    });
+    map.panTo(path[0]);
+    $scope.isSnapped = true;
+  }
+
+
+  $scope.$watch('showSnapped', function(newValue, oldValue) {
+    console.log('newValue', newValue);
+    console.log('oldValue', oldValue);
+    if (newValue) {
+      if (snappedPath) {
+        snappedPath.setMap(map);
+      }
+    } else {
+      if (snappedPath) {
+        snappedPath.setMap(null);
+      }
+    }
+  }, true);
 
   app.setCurrentLocation = function(coords) {
     map.panTo(new google.maps.LatLng(coords.latitude, coords.longitude));
@@ -41,12 +238,7 @@ angular.module('starter.controllers', [])
     geocoder.geocode({'latLng': latlng}, function(results, status) {
       if (status == google.maps.GeocoderStatus.OK) {
         if (results[0]) {
-          Info.startAddress = results[0].formatted_address;
-          $('#fix-footer .start').text(results[0].formatted_address);
-          // $('input[name=start]').val(results[0].formatted_address);
-          $scope.getNear(coords.latitude, coords.longitude);
-          $scope.interval();
-          $scope.$apply();
+          console.log(results[0].formatted_address);
         }
       } else {
         // alert("Geocoder failed due to: " + status);
@@ -54,10 +246,6 @@ angular.module('starter.controllers', [])
     });
   }
 
-  // if (!Info.carType || !Info.driveType) {
-  //   $state.go('app.towingstep1');
-  //   return;
-  // }
   $timeout(function() {
     initialize();
     fgGeo = window.navigator.geolocation;
@@ -70,105 +258,15 @@ angular.module('starter.controllers', [])
       maximumAge: 0,
       timeout: 5000
     });
-    var firstTime = true;
-    google.maps.event.addListener(map, 'dragend', function() {
-      // console.log('center_changed');
-      if (firstTime) {
-        $scope.isCenter = true;
-        $scope.$apply();
-        firstTime = false;
-      } else {
-        $scope.isCenter = false;
-        $scope.$apply();
-      }
-      $('#fix-footer .start').text('');
-      if (getAddress) {
-        $timeout.cancel(getAddress);
-      }
-      getAddress = $timeout(function() {
-        var coords = map.getCenter();
-        console.log('...corrds:'+ coords);
-        var latlng = new google.maps.LatLng(coords.H, coords.L);
-        Info.startGeo.lat = coords.H;
-        Info.startGeo.lng = coords.L;
-        geocoder.geocode({'latLng': latlng}, function(results, status) {
-          if (status == google.maps.GeocoderStatus.OK) {
-            if (results[0]) {
-              Info.startAddress = results[0].formatted_address;
-              $('#fix-footer .start').text(results[0].formatted_address);
-            }
-          } else {
-            // alert("Geocoder failed due to: " + status);
-          }
-        });
-        $scope.getNear(coords.H, coords.L);
-        $scope.$apply();
-      }, 100);
-    });
   }, 0);
 
-  $scope.info = '';
-
-  $scope.getNear = function(lat, lng) {
-    var point = new Parse.GeoPoint({latitude: lat, longitude: lng});
-    var Device = Parse.Object.extend("Device");
-    var queryNear = new Parse.Query(Device);
-    queryNear.near("location", point);
-    queryNear.withinKilometers("location", point, 6);
-    // queryNear.limit(10);
-    queryNear.find({
-      success: function(objs) {
-        // console.log(objs);
-        $scope.setMarkerOnMap(objs);
-        if (objs.length == 0) {
-          $scope.info = '半徑 6 公里內無拖車';
-        } else {
-          $scope.info = '設定起運地點';
-          var endPoint = objs[0].attributes;
-          var request = {
-            origin: new google.maps.LatLng(lat, lng),
-            destination: new google.maps.LatLng(endPoint.lat, endPoint.lng),
-            travelMode: google.maps.TravelMode.DRIVING
-          }
-          directionsService.route(request, function(result, status) {          
-            if (status == google.maps.DirectionsStatus.OK) {
-              // console.log(result);
-              console.log(result.routes[0].legs[0].duration.text);
-              $scope.deliverTime = result.routes[0].legs[0].duration.text;
-              $scope.$apply();
-            } else {
-              console.log('no result...');
-            }
-          });
-        }
-        $scope.$apply();
-      }
-    });
-  }
 
   $scope.getCenter = function() {
     $ionicBackdrop.retain();
     app.watchId = fgGeo.getCurrentPosition(function(location) {
       var coords = location.coords;
       map.panTo(new google.maps.LatLng(coords.latitude, coords.longitude));
-      var latlng = new google.maps.LatLng(coords.latitude, coords.longitude);
-      Info.startGeo.lat = coords.latitude;
-      Info.startGeo.lng = coords.longitude;
-      geocoder.geocode({'latLng': latlng}, function(results, status) {
-        if (status == google.maps.GeocoderStatus.OK) {
-          if (results[0]) {
-            Info.startAddress = results[0].formatted_address;
-            $('#fix-footer .start').text(results[0].formatted_address);
-            $scope.isCenter = true;
-            $ionicBackdrop.release();
-            $scope.getNear(coords.latitude, coords.longitude);
-            $scope.$apply();
-          }
-        } else {
-          // alert("Geocoder failed due to: " + status);
-        }
-      });
-
+      $ionicBackdrop.release();
     }, function() {
       $ionicBackdrop.release();
     }, {
@@ -178,7 +276,7 @@ angular.module('starter.controllers', [])
     });
   }
 
-  $scope.isCenter = false;
+
 
   $scope.markersArray = []
   $scope.setMarkerOnMap = function(res) {
@@ -523,49 +621,8 @@ angular.module('starter.controllers', [])
   return carInfo;
 }])
 
-.controller('TowingCtrl', ['$state','$stateParams','$scope', '$timeout', '$location', '$ionicPopup','$ionicBackdrop', 'Info', function($state, $stateParams, $scope, $timeout, $location, $ionicPopup, $ionicBackdrop, Info){
-  var carType,driveType;
-  $scope.next = function() {
-
-    carType = $('input[name="car-type"]:checked').val();
-    driveType = $('input[name="drive-type"]:checked').val();
-    console.log(carType, driveType);
-
-    if (!carType) {
-      $ionicPopup.alert({
-        title: '資料不全',
-        template: '尚未填寫車輛形式'
-      });
-      return;
-    } else if (!driveType) {
-      $ionicPopup.alert({
-        title: '資料不全',
-        template: '尚未填寫傳動方式'
-      });
-      return;
-    }
-    $scope.action();
-  }
-  $scope.action = function() {
-    $ionicBackdrop.retain();
-    Info.carType = carType;
-    Info.driveType = driveType;
-    $timeout(function() {
-      $ionicBackdrop.release();
-    }, 0);
-    $timeout(function() {
-      $state.go('app.search');
-    }, 0);
-  };
-}])
-
 .controller('LoadCtrl', ['$scope','$state', function($scope, $state){
-  var currentUser = Parse.User.current();
-  if (currentUser) {
-    $state.go('app.service');
-  } else {
-    $state.go('init');
-  }
+  $state.go('app.service');
 }])
 
 .controller('ServiceCtrl', ['$scope','$state', function($scope, $state){
@@ -582,176 +639,10 @@ angular.module('starter.controllers', [])
   });
 }])
 
-.controller('InitCtrl', ['$scope', '$location', '$ionicModal', '$timeout', '$ionicBackdrop', '$ionicPopup', function($scope, $location, $ionicModal, $timeout, $ionicBackdrop, $ionicPopup) {
-
-
-  // Form data for the login modal
-  $scope.loginData = {};
-  $scope.signupData = {};
-
-  // Create the login modal that we will use later
-  $ionicModal.fromTemplateUrl('templates/login.html', {
-    scope: $scope
-  }).then(function(modal) {
-    $scope.loginModal = modal;
-  });
-
-  // Triggered in the login modal to close it
-  $scope.closeLogin = function() {
-    $scope.loginModal.hide();
-  };
-
-  // Open the login modal
-  $scope.login = function() {
-    $scope.loginModal.show();
-  };
-
-  // Perform the login action when the user submits the login form
-  $scope.doLogin = function() {
-    if (!$scope.loginData.username || !$scope.loginData.password) {
-      $ionicPopup.alert({
-        title: '資料不全',
-        template: '請填寫帳號密碼'
-      });
-      return;
-    } else if ($scope.loginData.username.length != 10) {
-      $ionicPopup.alert({
-        title: '資料不全',
-        template: '手機號碼格式不符'
-      });
-      return;
-    } else if ($scope.loginData.password.length < 6) {
-      $ionicPopup.alert({
-        title: '密碼錯誤',
-        template: '密碼需大於 6 碼'
-      });
-      return;
-    } else if ($scope.loginData.password.length > 15) {
-      $ionicPopup.alert({
-        title: '密碼錯誤',
-        template: '密碼需小於 15 碼'
-      });
-      return;
-    }
-
-
-    $ionicBackdrop.retain();
-    Parse.User.logIn($scope.loginData.username, $scope.loginData.password, {
-      success: function(user) {
-        console.log(user);
-        $ionicBackdrop.release();
-        $scope.closeLogin();
-        $location.path('/app/service');
-      },
-      error: function(user, error) {
-        $ionicPopup.alert({
-          title: '登入錯誤',
-          template: error
-        });
-        $ionicBackdrop.release();
-      }
-    });
-
-    // $timeout(function() {
-    //   $scope.closeLogin();
-    //   $location.path('/app/service');
-    // }, 1000);
-  };
-
-  $ionicModal.fromTemplateUrl('templates/signup.html', {
-    scope: $scope
-  }).then(function(modal) {
-    $scope.signupModal = modal;
-  });
-
-  // Triggered in the login modal to close it
-  $scope.closeSignup = function() {
-    $scope.signupModal.hide();
-  };
-
-  // Open the login modal
-  $scope.signup = function() {
-    $scope.signupModal.show();
-  };
-
-  // Perform the login action when the user submits the login form
-  $scope.doSignup = function() {
-    if (!$scope.signupData.username || !$scope.signupData.password || !$scope.signupData.email) {
-      $ionicPopup.alert({
-        title: '資料不全',
-        template: '資料需填寫完整'
-      });
-      return;
-    } else if ($scope.signupData.username.length != 10 || !$scope.signupData.username) {
-      $ionicPopup.alert({
-        title: '資料不全',
-        template: '手機號碼格式不符'
-      });
-      return;
-    } else if (!validateEmail($scope.signupData.email)) {
-      $ionicPopup.alert({
-        title: '資料不全',
-        template: 'email 格式不符'
-      });
-      return;
-    } else if ($scope.signupData.password.length < 6) {
-      $ionicPopup.alert({
-        title: '密碼錯誤',
-        template: '密碼需大於 6 碼'
-      });
-      return;
-    } else if ($scope.signupData.password.length > 15) {
-      $ionicPopup.alert({
-        title: '密碼錯誤',
-        template: '密碼需小於 15 碼'
-      });
-      return;
-    }
-
-    $ionicBackdrop.retain();
-    var user = new Parse.User();
-    user.set("username", $scope.signupData.username);
-    user.set("password", $scope.signupData.password);
-    user.set("email", $scope.signupData.email);
-    user.signUp(null, {
-      success: function(user) {
-        $ionicBackdrop.release();
-        $scope.closeSignup();
-      },
-      error: function(user, error) {
-        $ionicPopup.alert({
-          title: '錯誤',
-          template: error.message
-        });
-        $ionicBackdrop.release();
-        return;
-      }
-    });
-  };
-}])
-
 .controller('GasCtrl', ['$scope', '$location', '$ionicModal', '$timeout', function($scope, $location, $ionicModal, $timeout) {
 
 }])
 
 .controller('AppCtrl', ['$scope', '$location', '$ionicModal', '$timeout', function($scope, $location, $ionicModal, $timeout) {
-  $scope.logout = function() {
-    Parse.User.logOut();
-    console.log(Parse.User.current());
-    $location.path('/home')
-  }
-}])
 
-.controller('PlaylistsCtrl', function($scope) {
-  $scope.playlists = [
-    { title: 'Reggae', id: 1 },
-    { title: 'Chill', id: 2 },
-    { title: 'Dubstep', id: 3 },
-    { title: 'Indie', id: 4 },
-    { title: 'Rap', id: 5 },
-    { title: 'Cowbell', id: 6 }
-  ];
-})
-
-.controller('PlaylistCtrl', function($scope, $stateParams) {
-});
+}]);

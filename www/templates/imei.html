@@ -1,0 +1,14 @@
+<ion-modal-view>
+  <ion-header-bar>
+    <h1 class="title">選擇設備</h1>
+  </ion-header-bar>
+  <ion-content has-bouncing="true">
+    <ion-list>
+      <ion-radio ng-model="$parent.selectInfo.imei" ng-repeat="car in carLists" ng-value="car.imei">{{car.imei}} - {{ timeago(car.seconds) }}</ion-radio>
+    </ion-list>
+  </ion-content>
+  <ion-footer-bar class="bar bar-footer bar-stable">
+    <button type="button" class="button button-stable" ng-click="closeIMEI()">Cancel</button>
+    <button type="button" class="button button-stable" ng-class="{ 'button-positive': selectInfo.imei }" ng-disabled="!selectInfo.imei" ng-click="setIMEI(selectInfo.imei)">Select</button>
+  </ion-footer-bar>
+</ion-modal-view>

@@ -12,10 +12,10 @@ function initialize() {
     navigationControl: false,
     mapTypeControl: false,
     disableDefaultUI: true,
-    zoomControl: false,
+    zoomControl: true,
     zoomControlOptions: {
       style: google.maps.ZoomControlStyle.LARGE,
-      position: google.maps.ControlPosition.RIGHT_BOTTOM
+      position: google.maps.ControlPosition.LEFT_BOTTOM
     },
     center: new google.maps.LatLng(25.0493098, 121.54648),
     zoom: 13,
@@ -28,12 +28,11 @@ function initialize() {
 }
 
 // Ionic Starter App
-Parse.initialize("dgCqs2hJo3iXzaxEDUpAjfhtBy8zOdAICIx1nF5k", "TYQ6wAX3dd5P4e5jXakIUbmZMxz48DPeylk21ALP");
 // angular.module is a global place for creating, registering and retrieving Angular modules
 // 'starter' is the name of this angular module example (also set in a <body> attribute in index.html)
 // the 2nd parameter is an array of 'requires'
 // 'starter.controllers' is found in controllers.js
-angular.module('starter', ['ionic', 'starter.controllers', 'validation', 'validation.rule','ngCordova'])
+angular.module('starter', ['ionic', 'starter.controllers', 'validation', 'validation.rule','ngCordova',"ion-datetime-picker"])
 
 .run(function($ionicPlatform) {
   $ionicPlatform.ready(function() {
@@ -66,11 +65,6 @@ angular.module('starter', ['ionic', 'starter.controllers', 'validation', 'valida
     cache: false
   })
 
-  .state('init', {
-    url: "/home",
-    templateUrl: "templates/home.html",
-    controller: 'InitCtrl'
-  })
 
   .state('app.service', {
     url: "/service",
@@ -103,11 +97,11 @@ angular.module('starter', ['ionic', 'starter.controllers', 'validation', 'valida
     cache: false
   })
 
-  .state('app.search', {
-    url: "/search",
+  .state('app.map', {
+    url: "/map",
     views: {
       'menuContent': {
-        templateUrl: "templates/search.html",
+        templateUrl: "templates/map.html",
         controller: 'MapCtrl'
       }
     },
@@ -123,33 +117,6 @@ angular.module('starter', ['ionic', 'starter.controllers', 'validation', 'valida
       }
     },
     cache: false
-  })
-
-  .state('app.browse', {
-    url: "/browse",
-    views: {
-      'menuContent': {
-        templateUrl: "templates/browse.html"
-      }
-    }
-  })
-  .state('app.playlists', {
-    url: "/playlists",
-    views: {
-      'menuContent': {
-        templateUrl: "templates/playlists.html",
-        controller: 'PlaylistsCtrl'
-      }
-    }
-  })
-  .state('app.single', {
-    url: "/playlists/:playlistId",
-    views: {
-      'menuContent': {
-        templateUrl: "templates/playlist.html",
-        controller: 'PlaylistCtrl'
-      }
-    }
   });
   // if none of the above states are matched, use this as the fallback
   $urlRouterProvider.otherwise('/loading');
