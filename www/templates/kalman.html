@@ -1,0 +1,12 @@
+<ion-view view-title="繪製路徑" id="map-scope">
+  <div id="map-canvas" style="height: 100%"></div>
+  <button id="hamburger-btn" class="button button-positive" ng-click="selectCar()">
+    <i class="icon ion-navicon-round"></i>
+  </button>
+  <button id="gps-location" class="button button-light" ng-class="{ 'active': isCenter }" ng-click="getCenter()">
+    <i class="icon-my_location"></i>
+  </button>
+  <div id="fix-footer" ng-class="{ 'active': isSnapped }" ng-init="showSnapped=false">
+    <ion-checkbox ng-model="showSnapped">Show Snapped Path</ion-checkbox>
+  </div>
+</ion-view>

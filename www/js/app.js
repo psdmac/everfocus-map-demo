@@ -32,9 +32,9 @@ function initialize() {
 // 'starter' is the name of this angular module example (also set in a <body> attribute in index.html)
 // the 2nd parameter is an array of 'requires'
 // 'starter.controllers' is found in controllers.js
-angular.module('starter', ['ionic', 'starter.controllers', 'validation', 'validation.rule','ngCordova',"ion-datetime-picker"])
+var myApp = angular.module('starter', ['ionic', 'starter.controllers', 'validation', 'validation.rule','ngCordova',"ion-datetime-picker"])
 
-.run(function($ionicPlatform) {
+myApp.run(function($ionicPlatform) {
   $ionicPlatform.ready(function() {
     // Hide the accessory bar by default (remove this to show the accessory bar above the keyboard
     // for form inputs)
@@ -46,9 +46,9 @@ angular.module('starter', ['ionic', 'starter.controllers', 'validation', 'valida
       StatusBar.styleDefault();
     }
   });
-})
+});
 
-.config(function($stateProvider, $urlRouterProvider) {
+myApp.config(function($stateProvider, $urlRouterProvider) {
   $stateProvider
 
   .state('app', {
@@ -76,26 +76,6 @@ angular.module('starter', ['ionic', 'starter.controllers', 'validation', 'valida
     }
   })
 
-  .state('app.towingstep1', {
-    url: "/step1",
-    views: {
-      'menuContent': {
-        templateUrl: "templates/step1.html",
-        controller: 'TowingCtrl'
-      }
-    }
-  })
-
-  .state('app.order', {
-    url: "/order",
-    views: {
-      'menuContent': {
-        templateUrl: "templates/order.html",
-        controller: "OrderCtrl"
-      }
-    },
-    cache: false
-  })
 
   .state('app.map', {
     url: "/map",
@@ -107,13 +87,13 @@ angular.module('starter', ['ionic', 'starter.controllers', 'validation', 'valida
     },
     cache: false
   })
-
-  .state('app.gas', {
-    url: "/gas-station",
+  
+  .state('app.kalman', {
+    url: "/kalman",
     views: {
       'menuContent': {
-        templateUrl: "templates/gas.html",
-        controller: 'GasCtrl'
+        templateUrl: "templates/kalman.html",
+        controller: 'KalmanCtrl'
       }
     },
     cache: false
